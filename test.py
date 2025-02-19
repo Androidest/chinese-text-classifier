@@ -7,8 +7,11 @@ import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 if __name__ == '__main__':
+    # parse args
     args = arg_parser.parse_args()
     print(f"========= Importing model: {args.model} ===========")
+
+    # import models dynamically
     module = import_module(f'models.{args.model}')
     TrainConfig = module.TrainConfig
     Model = module.Model

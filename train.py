@@ -3,13 +3,15 @@ from dataset import CNTextClassDataset
 from utils import set_seed, train, test, find_best_model_file, load_model, save_model, arg_parser
 from importlib import import_module
 import os
-# from models.bert_opt import TrainConfig, Model, TrainScheduler
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 if __name__ == '__main__':
+    # parse args
     args = arg_parser.parse_args()
     print(f"========= Importing model: {args.model} ===========")
+
+    # import models dynamically
     module = import_module(f'models.{args.model}')
     TrainConfig = module.TrainConfig
     Model = module.Model
@@ -35,7 +37,6 @@ if __name__ == '__main__':
     print(f"Found best model: max_acc={max_acc:>6.2%} max_acc_file={max_acc_file}")
 
     print(f"=================== Test best model ======================")
-    # 加载最好的模型，并显示测试结果
     model = load_model(model, max_acc_file)
     test_loss, test_acc, report, confusion = test(model, train_config, scheduler, ds_test, return_all=True, verbose=True)
     save_model(model, train_config.get_model_save_path(test_acc))

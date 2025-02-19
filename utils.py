@@ -9,7 +9,7 @@ import json
 import argparse
 import os
 
-# use proxy
+# use proxy if needed
 use_proxy = False
 if use_proxy:
     proxy_url = '127.0.0.1:1081'
@@ -17,12 +17,13 @@ if use_proxy:
     os.environ['HTTPS_PROXY'] = f'http://{proxy_url}'
     print(f"Using proxy on: {proxy_url}")
 
+# common argument parser for entry scripts
 arg_parser = argparse.ArgumentParser()
-arg_parser.add_argument('--model', type=str, help='choose a model', default='bert_opt')
-arg_parser.add_argument('--acc', type=str, help='choose model accuracy', default='94.88')
+arg_parser.add_argument('--model', type=str, help='choose a model', default='bert_opt') # default is the bert_opt model
+arg_parser.add_argument('--acc', type=str, help='choose model accuracy', default='-1') # -1 means any existing accuracy
 
 class TrainConfigBase:
-    # 必须有的参数
+    # common parameters
     random_seed : int = 1
     data_path_train : str = 'data/train.txt'
     data_path_val : str = 'data/dev.txt'
@@ -32,22 +33,29 @@ class TrainConfigBase:
     save_path : str = 'models_fine_tuned'
     model_name : str = 'xxx'
     num_epoches : int = 8
-    start_saving_epoch : int = 1 # 从第几个epoch开始保存模型，从1开始计数
-    batch_size : int = 128 # 训练集batch_size
-    eval_batch_size : int = 128 # 验证集batch_size
-    test_batch_size : int = 1024 # 测试集batch_size
-    eval_by_steps : int = 200 # 每训练多少步进行一次验证
-    dataset_cache_size : int = 50000 # 超大文本动态加载的随机缓存大小
-    persist_data : bool = True # 是否持久化数据，即是否将数据全部加载到内存中，否则每次都会重新加载
-    optimizer = None
-    loss_fn = torch.nn.CrossEntropyLoss() # 默认损失函数
+    start_saving_epoch : int = 1 # Save the model from the first epoch and count from 1
+    batch_size : int = 128 # training batch_size
+    eval_batch_size : int = 128 # evel batch_size
+    test_batch_size : int = 1024 # test batch_size
+    eval_by_steps : int = 200 # evaluate the model every 'eval_by_steps' steps when training
+    dataset_cache_size : int = 50000 # Random cache size for large text dynamic loading
+    persist_data : bool = True # whether to load all the data into memory, otherwise it will be loaded dynamically by chunks
+    optimizer = None # this will be set by the model's create_optimizer function
+    loss_fn = torch.nn.CrossEntropyLoss() 
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
 
     def create_optimizer(self, model: torch.nn.Module):
         raise NotImplementedError
     
     def save_path_acc(self, path, acc = None):
-        if acc is None:
+        if acc == '-1':
+            # -1 means any existing accuracy
+            files = search_files_starting_with_name(os.path.dirname(path), os.path.basename(path))
+            if len(files) == 0:
+                raise FileNotFoundError(f"Model file not found: {path}")
+            return files[0]
+            
+        if acc is None or acc == '':
             return path
         if isinstance(acc, str):
             return f"{path}.{acc}%"
@@ -104,15 +112,17 @@ class TrainSchedulerBase:
         self.train_config = train_config
         self.model = model
     
-    # 原语料数据预处理，输出结构直接用于模型训练，x会直接被传进模型的forward函数
+    # preprocess data from the dataset, 
+    # the output structure is directly used for model training, 
+    # and x will be directly passed into the forward function of the model
     def on_collate(self, batch : list):
         pass
 
-    # 训练开始时
+    # on start training
     def on_start(self):
         pass
     
-    # 训练完一个batch后
+    # on end of a batch
     def on_step_end(self, step: int, t_loss: float):
         pass
 
@@ -134,6 +144,16 @@ def load_model(model: torch.nn.Module, save_path: str):
         raise FileNotFoundError(f"Model file not found: {save_path}")
     model.load_state_dict(torch.load(save_path))
     return model
+
+def search_files_starting_with_name(path : str, name : str, recursive : bool = False):
+    matching_files = []
+    for root, dirs, files in os.walk(path, topdown=True):
+        for file in files:
+            if file.startswith(name):
+                matching_files.append(os.path.join(root, file))
+        if not recursive:
+            break
+    return matching_files
 
 def train(
     model: torch.nn.Module, 
@@ -165,11 +185,15 @@ def train(
             scheduler.on_step_end((epoch-1) * e_steps + step, t_loss)
 
             if step % train_config.eval_by_steps == eval_by_steps_1:
+                # evaluate the model
                 t_acc = metrics.accuracy_score(y.cpu(), y_pred.argmax(dim=-1).cpu())
                 v_loss, v_acc = test(model, train_config, scheduler, ds_val, is_eval=True)
                 print(f"\nepoch={epoch}/{train_config.num_epoches} step={step+1} train_loss={t_loss:>5.2} train_acc={t_acc:>6.2%} dev_loss={v_loss:>5.2} dev_acc={v_acc:>6.2%}")
+                
+                # save checkpoint
                 if epoch >= train_config.start_saving_epoch:
                     save_model(model, train_config.get_checkpoint_save_path(epoch, step))
+
                 model.train()
     model.eval()
     save_model(model, train_config.get_checkpoint_save_path(train_config.num_epoches, e_steps))
@@ -219,11 +243,13 @@ def find_best_model_file(
 ):
     max_acc = 0
     max_acc_file = None
+    # get the model's checkpoint folder
     folder = os.path.dirname(train_config.get_checkpoint_save_path(0, 0))
 
     if not os.path.exists(folder):
         return max_acc, max_acc_file
 
+    # iterate the checkpoint files
     for filename in os.listdir(folder):
         file_ext = filename.split('.')[-1]
         if '_' not in file_ext:
@@ -232,9 +258,12 @@ def find_best_model_file(
         file_path = f'{folder}/{filename}'
         model = load_model(model, file_path)
         _, test_acc = test(model, train_config, scheduler, ds_test, return_all=False, verbose=verbose)
+
+        # find the checkpoint file with the highest accuracy
         if test_acc > max_acc:
             max_acc = test_acc
             max_acc_file = file_path
+
         print(f"filename={filename} test_acc={test_acc:>6.2%} [max_acc={max_acc:>6.2%}]")
         
     return max_acc, max_acc_file
