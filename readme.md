@@ -10,7 +10,14 @@ This project focuses on text classification, featuring baseline models for quick
 
 ## Before Training
 
-#### Local Pretrained Models:
+#### Requirements
+
+```bash
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
+pip3 install pandas transformers fasttext-wheel scikit-learn
+```
+
+#### Use Local Pretrained Models:
 
 1. Place your pre-trained model files into the `/models_pretrained` folder.
 2. Modify the `TrainConfig.pretrained_path` in the corresponding model file under the `/models` folder. For example:
@@ -19,7 +26,7 @@ This project focuses on text classification, featuring baseline models for quick
    pretrained_path : str = 'models_pretrained/macbert_chinese_base'
    ```
 
-#### Hugging Face Models:
+#### Use Hugging Face Models:
 
 If you're using a model from Hugging Face, update the `TrainConfig.pretrained_path` with the model's name. For example:
 
