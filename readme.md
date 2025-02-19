@@ -1,3 +1,9 @@
+# Introduction
+
+---
+
+This project focuses on text classification, featuring baseline models for quick data testing and a range of transformer models for fine-tuning.
+
 # How to use
 
 ---
