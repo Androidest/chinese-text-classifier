@@ -119,9 +119,9 @@ class TrainSchedulerBase:
 def set_seed(seed: int):
     np.random.seed(seed)
     random.seed(seed)
-torch.manual_seed(seed)
-torch.cuda.manual_seed(seed)
-torch.backends.cudnn.deterministic = True
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
 
 def save_model(model: torch.nn.Module, save_path: str):
     folder = os.path.dirname(save_path)
