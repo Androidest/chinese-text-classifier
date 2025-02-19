@@ -4,7 +4,6 @@ import torch.utils
 import torch.utils.data
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score
-import math
 
 class Tokenizer:
     pad_token = '[PAD]'
@@ -14,10 +13,10 @@ class Tokenizer:
         self.vocab_dict = vocab_dict
         self.word_ngrams = word_ngrams
 
-    # 读取数据，创建tokenizer（建立词汇表等信息）
+    # Read data, create a tokenizer (create a vocabulary, etc.)
     @classmethod
     def create_from_data(cls, 
-            data_path : str,  # 监督训练语料，格式跟原版fasttext一致
+            data_path : str,  # Path to the training corpus in the same format that the original FastText uses.
             wordNgrams : int = 2):
         data = pd.read_csv(data_path, sep='\t', header=None)
         label_id = 0
@@ -47,7 +46,7 @@ class Tokenizer:
 
         return cls(vocab_dict, wordNgrams), formated_data, label_dict
 
-    # 读取数据，根据已有的词汇表进行tokenize
+    # Read data and tokenize from existing vocabularies
     def tokenize(self, data_path : str, label_dict : dict = None):
         data = pd.read_csv(data_path, sep='\t', header=None)
         formated_data = []
@@ -61,13 +60,13 @@ class Tokenizer:
 
         return formated_data
     
-    # 对文本进行N-gram切分
+    # do N-gram to text
     @classmethod
     def get_text_ngrams(cls, words : list, wordNgrams : int):
         ngram_features = []
-        # 这里是N-gram的关键，没有cls和eos的话，效果会差很多
-        # N-gram是为了保留词组的局部顺序信息
-        # 这里的cls和eos是为了让模型知道某个词是在开头还是结尾还是中间
+        # Here is the key to N-gram. Without cls and eos, the effect will be much worse.
+        # N-gram is to preserve the local order information of the phrase
+        # The cls and eos here are to let the model know whether a word is at the beginning, end or in the middle
         words = ['[cls]'] + words + ['[eos]'] 
         for i in range(len(words)-1):
             ngram_features.append(''.join(words[i:i+wordNgrams]))
@@ -111,7 +110,7 @@ class Model(torch.nn.Module):
 
 class Myfastext:
 
-    # fasttext监督训练
+    # fasttext supervised training
     @classmethod
     def train_supervised(cls, 
             data_path : str, 
@@ -124,14 +123,13 @@ class Myfastext:
             device = 'cuda'
     ) -> Model:
         
-        # 读取数据，创建tokenizer（建立词汇表等信息）
         tokenizer, data, label_dict = Tokenizer.create_from_data(data_path, wordNgrams)
         vocab_size = len(tokenizer.vocab_dict)
         embedding_dim = embedding_dim
         output_dim = len(label_dict)
         print(f'vocab_size={vocab_size}\nembedding_dim={embedding_dim}\noutput_dim={output_dim}')
 
-        # 根据词汇表初始化模型
+        # Initialize the model according to the vocabulary size and output dimension
         model = Model(vocab_size, embedding_dim, output_dim, tokenizer, label_dict, label)
         model.to(device)
         model.train()
@@ -150,7 +148,7 @@ class Myfastext:
                 total_loss += loss.item()
                 optimizer.step()
 
-            # 学习率线性衰减
+            # Learning rate using linear decay
             for p in optimizer.param_groups:
                 p['lr'] = lr * (1 - epoch / epoches)
 
@@ -177,9 +175,8 @@ class Myfastext:
             
         return { 'samples' : len(data), 'accuracy' : accuracy_score(all_label, all_pred) }
     
-    # Dataloader对每个batch的预处理函数
-    # 每个batch按最长序列作为padding长度
-    # 不同batch是动态padding长度的
+    # a callback function for the Dataloader
+    # Different batches uses different padding length(according to the longest sequence in the batch)
     @classmethod
     def collate_fn(cls, batch, padding_value, device):
         x = torch.nn.utils.rnn.pad_sequence([torch.tensor(item[0]) for item in batch], batch_first=True, padding_value=padding_value)

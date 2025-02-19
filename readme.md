@@ -12,6 +12,8 @@ This project focuses on text classification, featuring baseline models for quick
 
 #### Requirements
 
+If you're having trouble installing `fasttext`, try using `Myfastext` from this project instead. It's a simplified version of FastText, implemented using PyTorch. Note that the `auto-tune` feature isn’t included, so you'll need to tune the model manually.
+
 ```bash
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
 pip3 install pandas transformers fasttext-wheel scikit-learn
