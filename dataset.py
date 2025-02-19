@@ -1,6 +1,7 @@
 import random
 from torch.utils.data import IterableDataset
 
+# for loading chinese dataset
 class CNTextClassDataset(IterableDataset):
     def __init__(self, 
                 path: str, 
