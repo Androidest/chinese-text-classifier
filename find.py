@@ -1,6 +1,5 @@
-import os
-from dataset import CNTextClassDataset
-from utils import find_best_model_file, save_model, load_model, arg_parser
+from utils import *
+from datasets import *
 from importlib import import_module
 import os
 

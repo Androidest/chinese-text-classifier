@@ -1,10 +1,10 @@
+from utils import *
 import torch
 from transformers import BertModel, BertConfig, BertTokenizer
-from utils import TrainSchedulerBase, TrainConfigBase
 
 class TrainConfig(TrainConfigBase):
     random_seed : int = 1
-    pretrained_path : str = 'models_pretrained/ernie3.0-base-chinese'
+    pretrained_path : str = 'models_pretrained/ernie3.0-base-chinese' # pretrained model path or Huggingface model name
     save_path : str = 'models_fine_tuned'
     model_name : str = 'ernie'
     start_saving_epoch : int = 4

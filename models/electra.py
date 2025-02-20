@@ -1,10 +1,10 @@
+from utils import *
 import torch
 from transformers import ElectraModel, ElectraConfig, ElectraTokenizer
-from utils import TrainSchedulerBase, TrainConfigBase
 
 class TrainConfig(TrainConfigBase):
     random_seed : int = 1
-    pretrained_path : str = 'models_pretrained/electra_base_discriminator'
+    pretrained_path : str = 'models_pretrained/electra_base_discriminator' # pretrained model path or Huggingface model name
     save_path : str = 'models_fine_tuned'
     model_name : str = 'electra'
     start_saving_epoch : int = 4

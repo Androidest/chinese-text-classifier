@@ -1,11 +1,12 @@
+from utils import *
 import torch
 from transformers import AlbertModel, AlbertConfig, BertTokenizerFast
-from utils import TrainSchedulerBase, TrainConfigBase
 import copy
 
 class TrainConfig(TrainConfigBase):
-    pretrained_path : str = 'ckiplab/albert-base-chinese'
-    # pretrained_path : str = 'models_pretrained/albert-base-chinese'
+    random_seed : int = 1
+    # pretrained_path : str = 'ckiplab/albert-base-chinese' # pretrained model path or Huggingface model name
+    pretrained_path : str = 'models_pretrained/albert-base-chinese' # pretrained model path or Huggingface model name
     save_path : str = 'models_fine_tuned'
     model_name : str = 'albert'
     start_saving_epoch : int = 4
