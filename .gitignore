@@ -175,3 +175,5 @@ cython_debug/
 /models_pretrained/**/
 /baselines/**/data
 /baselines/**/*.bin
+/data_distilled/**/*.*
+/models_distilled/**/*.*

@@ -14,7 +14,7 @@ class TrainConfigBase:
     model_name : str = 'xxx'
     teacher_model_name : str = 'xxx'   # teacher model name for distillation
     teacher_model_acc : str = '95.02'  # to load the teacher model file with the corresponding accuracy suffix
-    distilled_data_path : str = ''
+    distilled_data_path : str = 'data_distilled/distilled_xxx.txt'
     num_epoches : int = 8
     start_saving_epoch : int = 1 # Save the model from the first epoch and count from 1
     batch_size : int = 128 # training batch_size

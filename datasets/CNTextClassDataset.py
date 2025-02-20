@@ -6,14 +6,35 @@ class CNTextClassDataset(IterableDataset):
     def __init__(self, 
                 path: str, 
                 config, 
-                use_random: bool = True):
+                use_random: bool = True,
+                return_line: bool = False):
+        """
+        Initialize the CNTextClassDataset object.
+
+        Args:
+            path (str): The path to the dataset file.
+            config: The configuration object containing dataset and model settings.
+            use_random (bool, optional): Whether to use random sampling. Defaults to True.
+            return_line (bool, optional): Whether to return the original line in the data. Defaults to False.
+        """
+        # Store the path to the dataset file
         self.path = path
+        # Set the cache size for random sampling
         self.cache_size = config.dataset_cache_size
+        # Initialize the tokenizer from the configuration
         self.tokenizer = config.model_tokenizer
+        # Determine whether to use random sampling
         self.use_random = use_random
+        # Determine whether to return the original line in the data
+        self.return_line = return_line
+        # Initialize the persisted data list if required
         self.persisted_data = [] if config.persist_data else None
+        # Calculate the total number of lines in the dataset file
         with open(self.path, 'r', encoding='utf-8') as f:
             self.line_count = sum(1 for line in f)
+
+    def do_not_persisted_data(self):
+        self.persisted_data = None
 
     def __len__(self) -> int:
         return self.line_count
@@ -62,6 +83,9 @@ class CNTextClassDataset(IterableDataset):
             'x': tokens_emb,
             'y': int(label),
         }
+
+        if self.return_line:
+            data['line'] = line
 
         if self.persisted_data is not None:
             self.persisted_data.append(data)

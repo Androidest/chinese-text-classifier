@@ -16,6 +16,7 @@ if use_proxy:
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument('--model', type=str, help='choose a model', default='bert_opt') # default is the bert_opt model
 arg_parser.add_argument('--acc', type=str, help='choose model accuracy', default='-1') # -1 means any existing accuracy
+arg_parser.add_argument('--redistill', help='force re-distill data', action='store_true') # -1 means any existing accuracy
 
 def set_seed(seed: int):
     np.random.seed(seed)
