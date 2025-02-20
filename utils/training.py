@@ -14,9 +14,8 @@ def train(
     ds_val: Dataset
 ):
     model.train()
-    loss_fn = train_config.loss_fn
     optimizer = train_config.create_optimizer(model)
-    dataloader = DataLoader(ds_train, batch_size=train_config.batch_size, collate_fn=lambda b:scheduler.on_collate(b))
+    dataloader = DataLoader(ds_train, batch_size=train_config.batch_size, collate_fn=lambda b:model.collate_fn(b))
     scheduler.on_start()
     eval_by_steps_1 = train_config.eval_by_steps - 1
     optimizer.zero_grad()
@@ -27,7 +26,7 @@ def train(
         for step, (x, y) in enumerate(tqdm(dataloader)):
 
             y_pred = model(x)
-            loss = loss_fn(y_pred, y)
+            loss = train_config.loss_fn(y_pred, y)
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()

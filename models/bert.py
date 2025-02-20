@@ -12,7 +12,7 @@ class TrainConfig(TrainConfigBase):
     start_saving_epoch : int = 2 
     batch_size : int = 128 
     eval_batch_size : int = 32 
-    test_batch_size : int = 64 
+    test_batch_size : int = 1024 
     eval_by_steps : int = 200 
     dataset_cache_size : int = 50000 
     learning_rate : float = 5e-5
@@ -38,8 +38,8 @@ class TrainConfig(TrainConfigBase):
         ]
         self.optimizer=torch.optim.AdamW(optimizer_grouped_parameters,lr=self.learning_rate)
         return self.optimizer
-
-class Model(torch.nn.Module):
+    
+class Model(ModelBase):
     def __init__(self, train_config: TrainConfig):
         super().__init__()
         self.train_config = train_config
@@ -51,11 +51,7 @@ class Model(torch.nn.Module):
         x = x.last_hidden_state[:, 0, :]
         return self.fc(x)
 
-class TrainScheduler(TrainSchedulerBase):
-    model : Model
-    train_config : TrainConfig
-    
-    def on_collate(self, batch : list):
+    def collate_fn(self, batch : list):
         tokens = torch.nn.utils.rnn.pad_sequence(
             [torch.tensor([self.train_config.model_tokenizer.cls_token_id] + data['x']) for data in batch], 
             batch_first=True, 
@@ -63,3 +59,7 @@ class TrainScheduler(TrainSchedulerBase):
         x = { 'input_ids': tokens, 'attention_mask': (tokens != 0).float() } 
         y = torch.tensor([data['y'] for data in batch], device=self.train_config.device)
         return x, y
+    
+class TrainScheduler(TrainSchedulerBase):
+    model : Model
+    train_config : TrainConfig

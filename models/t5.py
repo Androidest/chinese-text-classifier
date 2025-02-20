@@ -11,7 +11,7 @@ class TrainConfig(TrainConfigBase):
     num_epoches : int = 7
     batch_size : int = 64
     eval_batch_size : int = 64 
-    test_batch_size : int = 64 
+    test_batch_size : int = 1024 
     eval_by_steps : int = 400 
     dataset_cache_size : int = 100000 
     # Staged training: Unlock different parameters and change the learning rate at different stages
@@ -40,7 +40,7 @@ class TrainConfig(TrainConfigBase):
         self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters)
         return self.optimizer
 
-class Model(torch.nn.Module):
+class Model(ModelBase):
     def __init__(self, train_config: TrainConfig):
         super().__init__()
         self.hd_size = train_config.model_config.hidden_size
@@ -67,17 +67,7 @@ class Model(torch.nn.Module):
         logits = self.classifier(eos_hidden_vectors)
         return logits
     
-    def freeze_embeddings(self):
-        for p in self.t5.shared.parameters():
-            p.requires_grad = False
-
-class TrainScheduler(TrainSchedulerBase):
-    model : Model
-    train_config : TrainConfig
-    stage : int = -1
-    next_stage_step : int = -1
-
-    def on_collate(self, batch : list):
+    def collate_fn(self, batch : list):
         pad_token_id = self.train_config.model_config.pad_token_id
         decoder_start_token_id = self.train_config.model_config.decoder_start_token_id
         eos_token_id = self.train_config.model_config.eos_token_id
@@ -92,6 +82,16 @@ class TrainScheduler(TrainSchedulerBase):
         }
         y = torch.tensor([data['y'] for data in batch], device=self.train_config.device)
         return x, y
+    
+    def freeze_embeddings(self):
+        for p in self.t5.shared.parameters():
+            p.requires_grad = False
+
+class TrainScheduler(TrainSchedulerBase):
+    model : Model
+    train_config : TrainConfig
+    stage : int = -1
+    next_stage_step : int = -1
     
     def on_start(self):
         self._set_stage(0)

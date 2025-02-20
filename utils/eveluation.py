@@ -18,7 +18,7 @@ def test(
     model.eval()
     with torch.no_grad():
         b_size = train_config.eval_batch_size if is_eval else train_config.test_batch_size
-        dataloader = DataLoader(ds, batch_size=b_size, collate_fn=lambda b:scheduler.on_collate(b))
+        dataloader = DataLoader(ds, batch_size=b_size, collate_fn=lambda b:model.collate_fn(b))
 
         if verbose:
             dataloader = tqdm(dataloader)

@@ -11,7 +11,7 @@ class TrainConfig(TrainConfigBase):
     num_epoches : int = 6
     batch_size : int = 64 
     eval_batch_size : int = 64
-    test_batch_size : int = 64
+    test_batch_size : int = 1024
     eval_by_steps : int = 400
     dataset_cache_size : int = 180000 
     # Staged training: Unlock different parameters and change the learning rate at different stages
@@ -41,7 +41,7 @@ class TrainConfig(TrainConfigBase):
         self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters)
         return self.optimizer
 
-class Model(torch.nn.Module):
+class Model(ModelBase):
     def __init__(self, train_config: TrainConfig):
         super().__init__()
         hd_size = train_config.model_config.hidden_size
@@ -66,6 +66,15 @@ class Model(torch.nn.Module):
         logits = self.classifier(last_hidden_state[:, 0, :] + pooler_out)
         return logits
     
+    def collate_fn(self, batch : list):
+        tokens = torch.nn.utils.rnn.pad_sequence(
+            [torch.tensor([self.train_config.model_tokenizer.cls_token_id] + data['x']) for data in batch], 
+            batch_first=True, 
+            padding_value=0).to(self.train_config.device)
+        x = { 'input_ids': tokens, 'attention_mask': (tokens != 0).float() } # bert forward 参数
+        y = torch.tensor([data['y'] for data in batch], device=self.train_config.device)
+        return x, y
+    
     def freeze_bert(self):
         for p in self.electra.parameters():
             p.requires_grad = False
@@ -84,15 +93,6 @@ class TrainScheduler(TrainSchedulerBase):
     train_config : TrainConfig
     stage : int = -1
     next_stage_step : int = -1
-
-    def on_collate(self, batch : list):
-        tokens = torch.nn.utils.rnn.pad_sequence(
-            [torch.tensor([self.train_config.model_tokenizer.cls_token_id] + data['x']) for data in batch], 
-            batch_first=True, 
-            padding_value=0).to(self.train_config.device)
-        x = { 'input_ids': tokens, 'attention_mask': (tokens != 0).float() } # bert forward 参数
-        y = torch.tensor([data['y'] for data in batch], device=self.train_config.device)
-        return x, y
     
     def on_start(self):
         self._set_stage(0)

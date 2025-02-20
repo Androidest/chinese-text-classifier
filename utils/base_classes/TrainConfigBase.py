@@ -12,6 +12,9 @@ class TrainConfigBase:
     pretrained_path : str = 'models_pretrained/xxx' # pretrained model path or Huggingface model name
     save_path : str = 'models_fine_tuned'
     model_name : str = 'xxx'
+    teacher_model_name : str = 'xxx'   # teacher model name for distillation
+    teacher_model_acc : str = '95.02'  # to load the teacher model file with the corresponding accuracy suffix
+    distilled_data_path : str = ''
     num_epoches : int = 8
     start_saving_epoch : int = 1 # Save the model from the first epoch and count from 1
     batch_size : int = 128 # training batch_size
@@ -21,12 +24,15 @@ class TrainConfigBase:
     dataset_cache_size : int = 50000 # Random cache size for large text dynamic loading
     persist_data : bool = True # whether to load all the data into memory, otherwise it will be loaded dynamically by chunks
     optimizer = None # this will be set by the model's create_optimizer function
-    loss_fn = torch.nn.CrossEntropyLoss()
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
 
     def create_optimizer(self, model: torch.nn.Module):
         raise NotImplementedError
 
+    def loss_fn(self, logits, labels):
+        return torch.nn.CrossEntropyLoss()(logits, labels)
+    
+    # save and load functions
     def save_path_acc(self, path, acc = None):
         if acc == '-1':
             # -1 means any existing accuracy

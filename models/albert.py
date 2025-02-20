@@ -42,8 +42,8 @@ class TrainConfig(TrainConfigBase):
         ]
         self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters)
         return self.optimizer
-
-class Model(torch.nn.Module):
+    
+class Model(ModelBase):
     def __init__(self, train_config: TrainConfig):
         super().__init__()
         config =  train_config.model_config
@@ -70,17 +70,17 @@ class Model(torch.nn.Module):
         x = self.classification(o.pooler_output + o.last_hidden_state[:, 0, :])
         return x
 
+    def collate_fn(self, batch : list):
+        tokens = torch.nn.utils.rnn.pad_sequence([torch.tensor(data['x']) for data in batch], batch_first=True, padding_value=0).to(self.train_config.device)
+        x = { 'input_ids': tokens, 'attention_mask': (tokens != 0).float() } # bert forward 参数
+        y = torch.tensor([data['y'] for data in batch], device=self.train_config.device)
+        return x, y
+    
 class TrainScheduler(TrainSchedulerBase):
     model : Model
     train_config : TrainConfig
     stage : int = -1
     next_stage_step : int = -1
-
-    def on_collate(self, batch : list):
-        tokens = torch.nn.utils.rnn.pad_sequence([torch.tensor(data['x']) for data in batch], batch_first=True, padding_value=0).to(self.train_config.device)
-        x = { 'input_ids': tokens, 'attention_mask': (tokens != 0).float() } # bert forward 参数
-        y = torch.tensor([data['y'] for data in batch], device=self.train_config.device)
-        return x, y
     
     def on_start(self):
         self._set_stage(0)
