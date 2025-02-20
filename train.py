@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
     print(f"=============== Start finding best model =================")
     ds_test = CNTextClassDataset(train_config.data_path_test, train_config, use_random=False)
-    max_acc, max_acc_file = eveluation(train_config, model, scheduler, ds_test, verbose=True)
+    max_acc, max_acc_file = find_best_model_file(train_config, model, scheduler, ds_test, verbose=True)
     print(f"Found best model: max_acc={max_acc:>6.2%} max_acc_file={max_acc_file}")
 
     print(f"=================== Test best model ======================")
