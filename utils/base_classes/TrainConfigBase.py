@@ -12,9 +12,6 @@ class TrainConfigBase:
     pretrained_path : str = 'models_pretrained/xxx' # pretrained model path or Huggingface model name
     save_path : str = 'models_fine_tuned'
     model_name : str = 'xxx'
-    teacher_model_name : str = 'xxx'   # teacher model name for distillation
-    teacher_model_acc : str = '95.02'  # to load the teacher model file with the corresponding accuracy suffix
-    distilled_data_path : str = 'data_distilled/distilled_xxx.txt'
     num_epoches : int = 8
     start_saving_epoch : int = 1 # Save the model from the first epoch and count from 1
     batch_size : int = 128 # training batch_size
@@ -93,6 +90,18 @@ class TrainConfigBase:
                     self.__setattr__(k, v)
             return self
         
+
+class DistillConfigBase(TrainConfigBase):
+    save_path : str = 'models_distilled'
+    teacher_model_name : str = 'xxx'   # teacher model name for distillation
+    teacher_model_acc : str = '95.02'  # to load the teacher model file with the corresponding accuracy suffix
+    distilled_data_path : str = 'data_distilled/distilled_xxx.txt'
+    temperature_div : float = 1.0
+    temperature : float = 1.0
+
+    def distill_loss_fn(self, logits, labels, teacher_logits):
+        raise NotImplementedError
+
 def search_files_starting_with_name(path : str, name : str, recursive : bool = False):
     matching_files = []
     for root, dirs, files in os.walk(path, topdown=True):

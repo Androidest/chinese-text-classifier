@@ -6,7 +6,6 @@ class TrainConfig(TrainConfigBase):
     random_seed : int = 1
     # pretrained_path : str = 'google-bert/bert-base-chinese' # pretrained model path or Huggingface model name
     pretrained_path : str = 'models_pretrained/bert' # pretrained model path or Huggingface model name
-    save_path : str = 'models_fine_tuned'
     model_name : str = 'bert'
     num_epoches : int = 3
     start_saving_epoch : int = 2 

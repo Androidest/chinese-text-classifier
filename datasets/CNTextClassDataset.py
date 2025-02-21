@@ -1,5 +1,6 @@
 import random
 from torch.utils.data import IterableDataset
+import json
 
 # for loading chinese dataset
 class CNTextClassDataset(IterableDataset):
@@ -75,7 +76,9 @@ class CNTextClassDataset(IterableDataset):
                 yield data
 
     def _preprocess(self, line: str) -> dict:
-        text, label = line.split('\t')
+        line = line.split('\t')
+        text = line[0]
+        label = line[1].replace('\n', '')
         tokens = self.tokenizer.tokenize(text)
         tokens_emb = self.tokenizer.convert_tokens_to_ids(tokens)
 
@@ -84,10 +87,15 @@ class CNTextClassDataset(IterableDataset):
             'y': int(label),
         }
 
+        # load teacher model's logits if exists (for model distillation)
+        if len(line) > 2:
+            data['logits'] = json.loads(line[2])
+
+        # return the original line if required (for data distillation)
         if self.return_line:
-            data['line'] = line
+            data['line'] = f'{text}\t{label}'
 
         if self.persisted_data is not None:
             self.persisted_data.append(data)
 
-        return data
+        return data # dict{'x', 'y', 'logits', 'line'}

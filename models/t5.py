@@ -5,7 +5,6 @@ from transformers import T5Model, T5Config, BertTokenizer, T5ForSequenceClassifi
 class TrainConfig(TrainConfigBase):
     random_seed : int = 1
     pretrained_path : str = 'uer/t5-base-chinese-cluecorpussmall' # pretrained model path or Huggingface model name
-    save_path : str = 'models_fine_tuned'
     model_name : str = 't5'
     start_saving_epoch : int = 4
     num_epoches : int = 7

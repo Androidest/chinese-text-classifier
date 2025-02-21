@@ -5,7 +5,6 @@ from transformers import BertModel, BertConfig, BertTokenizer
 class TrainConfig(TrainConfigBase):
     random_seed : int = 1
     pretrained_path : str = 'models_pretrained/roberta' # pretrained model path or Huggingface model name
-    save_path : str = 'models_fine_tuned'
     model_name : str = 'roberta'
     start_saving_epoch : int = 4
     num_epoches : int = 6
