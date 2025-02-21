@@ -3,7 +3,7 @@ import torch
 from transformers import BertModel, BertConfig, BertTokenizer
 
 class TrainConfig(TrainConfigBase):
-    random_seed : int = 1
+    random_seed : int = 2
     # pretrained_path : str = 'hfl/chinese-macbert-base' # pretrained model path or Huggingface model name
     pretrained_path : str = 'models_pretrained/macbert_chinese_base' # pretrained model path or Huggingface model name
     save_path : str = 'models_fine_tuned'
