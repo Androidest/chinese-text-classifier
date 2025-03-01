@@ -59,9 +59,6 @@ class TrainConfigBase:
         path = f"{self.save_path}/{self.model_name}/{self.model_name}.config"
         return self.save_path_acc(path, acc)
 
-    def get_checkpoint_save_path(self, epoch : int, step : int):
-        return f"{self.save_path}/{self.model_name}/checkpoints/{self.model_name}.pth.{epoch}_{step}"
-
     def save(self, path: str):
         folder = os.path.dirname(path)
         if not os.path.exists(folder):

@@ -93,10 +93,10 @@ class TrainScheduler(TrainSchedulerBase):
     stage : int = -1
     next_stage_step : int = -1
     
-    def on_start(self):
+    def on_start(self, epoch_steps: int):
         self._set_stage(0)
     
-    def on_step_end(self, step: int, t_loss: float):
+    def on_step_end(self, epoch : int, step: int, t_loss: float, t_acc : float):
         if step == self.next_stage_step:
              self._set_stage(self.stage + 1)
 

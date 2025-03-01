@@ -9,7 +9,6 @@ import os
 def test(
     model: torch.nn.Module, 
     train_config: TrainConfigBase, 
-    scheduler: TrainSchedulerBase, 
     ds: Dataset, 
     return_all: bool = False, 
     verbose: bool = False,
@@ -41,38 +40,3 @@ def test(
             return loss, acc, report, confusion
 
         return loss, acc
-
-
-def find_best_model_file(
-    train_config : TrainConfigBase,
-    model: torch.nn.Module,
-    scheduler: TrainSchedulerBase,
-    ds_test: Dataset,
-    verbose: bool =True
-):
-    max_acc = 0
-    max_acc_file = None
-    # get the model's checkpoint folder
-    folder = os.path.dirname(train_config.get_checkpoint_save_path(0, 0))
-
-    if not os.path.exists(folder):
-        return max_acc, max_acc_file
-
-    # iterate the checkpoint files
-    for filename in os.listdir(folder):
-        file_ext = filename.split('.')[-1]
-        if '_' not in file_ext:
-            continue
-
-        file_path = f'{folder}/{filename}'
-        model = load_model(model, file_path)
-        _, test_acc = test(model, train_config, scheduler, ds_test, return_all=False, verbose=verbose)
-
-        # find the checkpoint file with the highest accuracy
-        if test_acc > max_acc:
-            max_acc = test_acc
-            max_acc_file = file_path
-
-        print(f"filename={filename} test_acc={test_acc:>6.2%} [max_acc={max_acc:>6.2%}]")
-
-    return max_acc, max_acc_file

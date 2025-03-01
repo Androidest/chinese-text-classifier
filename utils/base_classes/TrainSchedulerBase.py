@@ -7,9 +7,9 @@ class TrainSchedulerBase:
         self.model = model
         
     # on start training
-    def on_start(self):
+    def on_start(self, epoch_steps: int):
         pass
 
     # on end of a batch
-    def on_step_end(self, step: int, t_loss: float):
+    def on_step_end(self, epoch : int, step: int, t_loss: float, t_acc : float):
         pass

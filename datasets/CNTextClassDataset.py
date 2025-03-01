@@ -1,6 +1,5 @@
 import random
 from torch.utils.data import IterableDataset
-import json
 
 # for loading chinese dataset
 class CNTextClassDataset(IterableDataset):
@@ -89,7 +88,7 @@ class CNTextClassDataset(IterableDataset):
 
         # load teacher model's logits if exists (for model distillation)
         if len(line) > 2:
-            data['logits'] = json.loads(line[2])
+            data['logits'] = [float(p) for p in line[2].split(',')]
 
         # return the original line if required (for data distillation)
         if self.return_line:

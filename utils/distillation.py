@@ -1,5 +1,4 @@
 from datasets import *
-from sklearn import metrics
 import os
 from importlib import import_module
 from .eveluation import *
@@ -44,7 +43,7 @@ def distill_data(student_train_config):
                 logits_batch = teacher_model(x)
                 logits_batch = logits_batch.detach().cpu().tolist()
                 for i, data in enumerate(b):
-                    logits = logits_batch[i]
+                    logits = ','.join([ f'{p:.5f}' for p in logits_batch[i] ])
                     lines += f'{data['line']}\t{logits}\n' # concatenate the original line and the logits with tab
                 
                 # save the data to file every 1M lines
@@ -66,33 +65,41 @@ def distill_model(
     model.train()
     optimizer = train_config.create_optimizer(model)
     dataloader = DataLoader(ds_train, batch_size=train_config.batch_size, collate_fn=lambda b:model.collate_fn(b))
-    scheduler.on_start()
-    eval_by_steps_1 = train_config.eval_by_steps - 1
-    optimizer.zero_grad()
-
     e_steps = len(dataloader)
-    for epoch in range(1, train_config.num_epoches + 1):
-        print(f"Epoch: {epoch}/{train_config.num_epoches}")
+    scheduler.on_start(epoch_steps=e_steps)
+    eval_by_steps_1 = train_config.eval_by_steps - 1
+
+    def get_lr():
+        return train_config.optimizer.param_groups[0]['lr']
+
+    max_acc = 0
+    acum_loss = 0
+    correct_num = 0
+    samples = 0
+    for epoch in range(0, train_config.num_epoches):
+        print(f"epoch={epoch+1}/{train_config.num_epoches} lr={get_lr():>5.2e}")
         for step, (x, y, logits) in enumerate(tqdm(dataloader)):
+            global_step = epoch * e_steps + step
+
+            optimizer.zero_grad()
             y_pred = model(x)
             loss = train_config.distill_loss_fn(y_pred, y, logits)
             loss.backward()
             optimizer.step()
-            optimizer.zero_grad()
 
-            t_loss = loss.item()
-            scheduler.on_step_end((epoch-1) * e_steps + step, t_loss)
+            samples += len(y)
+            correct_num += (y == y_pred.argmax(dim=-1)).sum().item()
+            acum_loss += loss.item()
+            t_loss = acum_loss / (global_step + 1)
+            t_acc = correct_num / samples
+            scheduler.on_step_end(epoch, global_step, t_loss, t_acc)
 
-            if step % train_config.eval_by_steps == eval_by_steps_1:
-                # evaluate the model
-                t_acc = metrics.accuracy_score(y.cpu(), y_pred.argmax(dim=-1).cpu())
-                v_loss, v_acc = test(model, train_config, scheduler, ds_val, is_eval=True)
-                print(f"\nepoch={epoch}/{train_config.num_epoches} step={step+1} train_loss={t_loss:>5.2} train_acc={t_acc:>6.2%} dev_loss={v_loss:>5.2} dev_acc={v_acc:>6.2%}")
-
-                # save checkpoint
-                if epoch >= train_config.start_saving_epoch:
-                    save_model(model, train_config.get_checkpoint_save_path(epoch, step))
-
+            # evaluate the model
+            if step % train_config.eval_by_steps == eval_by_steps_1 or step == e_steps - 1:
+                v_loss, v_acc = test(model, train_config, ds_val, is_eval=True)
                 model.train()
-    model.eval()
-    save_model(model, train_config.get_checkpoint_save_path(train_config.num_epoches, e_steps))
+                if epoch + 1 >= train_config.start_saving_epoch and v_acc > max_acc:
+                    max_acc = v_acc
+                    save_model(model, train_config.get_model_save_path())
+
+                print(f"\nepoch={epoch+1}/{train_config.num_epoches} step={step+1} train_loss={t_loss:>5.2} train_acc={t_acc:>6.2%} dev_loss={v_loss:>5.2} dev_acc={v_acc:>6.2%} lr={get_lr():>5.2e}")

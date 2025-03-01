@@ -29,6 +29,7 @@ if __name__ == '__main__':
         print(f"Teacher model [{train_config.teacher_model_name}], Distilled data path [{train_config.distilled_data_path}]")
         distill_data(train_config)
 
+    print(f"=================== Start Training ======================")
     model = Model(train_config).to(train_config.device)
     scheduler = TrainScheduler(train_config, model)
     # use the distilled data to train the student model (path = train_config.distilled_data_path)
@@ -36,14 +37,10 @@ if __name__ == '__main__':
     ds_val = CNTextClassDataset(train_config.data_path_val, train_config, use_random=False)
     distill_model(model, train_config, scheduler, ds_train, ds_val)
 
-    print(f"=============== Start finding best model =================")
-    ds_test = CNTextClassDataset(train_config.data_path_test, train_config, use_random=False)
-    max_acc, max_acc_file = find_best_model_file(train_config, model, scheduler, ds_test, verbose=True)
-    print(f"Found best model: max_acc={max_acc:>6.2%} max_acc_file={max_acc_file}")
-
     print(f"=================== Test best model ======================")
-    model = load_model(model, max_acc_file)
-    test_loss, test_acc, report, confusion = test(model, train_config, scheduler, ds_test, return_all=True, verbose=True)
+    ds_test = CNTextClassDataset(train_config.data_path_test, train_config, use_random=False)
+    model = load_model(model, train_config.get_model_save_path())
+    test_loss, test_acc, report, confusion = test(model, train_config, ds_test, return_all=True, verbose=True)
     save_model(model, train_config.get_model_save_path(test_acc))
     train_config.save(train_config.get_config_save_path(test_acc))
     print("Test result:")
