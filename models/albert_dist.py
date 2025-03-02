@@ -10,7 +10,7 @@ class TrainConfig(DistillConfigBase):
     teacher_model_name : str = 'macbert'   # teacher model name for distillation
     teacher_model_acc : str = '95.22'  # to load the teacher model file with the corresponding accuracy suffix
     distilled_data_path : str = 'data_distilled/distilled_macbert.txt'
-    start_saving_epoch : int = 6
+    start_saving_epoch : int = 3
     num_epoches : int = 8
     batch_size : int = 64
     eval_batch_size : int = 512
@@ -87,6 +87,8 @@ class Model(ModelBase):
         return x
     
     def collate_fn(self, batch : list):
+        prefix = [self.train_config.model_tokenizer.cls_token_id]
+
         tokens = torch.nn.utils.rnn.pad_sequence(
             [torch.tensor(data['x']) for data in batch], 
             batch_first=True, padding_value=0).to(self.train_config.device)
