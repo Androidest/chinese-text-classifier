@@ -70,7 +70,12 @@ class Model(ModelBase):
         return x
 
     def collate_fn(self, batch : list):
-        tokens = torch.nn.utils.rnn.pad_sequence([torch.tensor(data['x']) for data in batch], batch_first=True, padding_value=0).to(self.train_config.device)
+        prefix = [self.train_config.model_tokenizer.cls_token_id]
+        tokens = torch.nn.utils.rnn.pad_sequence(
+            [torch.tensor(prefix + data['x']) for data in batch], 
+            batch_first=True, 
+            padding_value=0).to(self.train_config.device)
+        
         x = { 'input_ids': tokens, 'attention_mask': (tokens != 0).float() } # bert forward 参数
         y = torch.tensor([data['y'] for data in batch], device=self.train_config.device)
         return x, y
