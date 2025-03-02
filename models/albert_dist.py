@@ -1,7 +1,58 @@
 from utils import *
 import torch
-from transformers import AlbertModel, AlbertConfig, BertTokenizerFast
-import numpy as np
+from transformers import AlbertModel, AlbertConfig
+from collections import Counter
+import os
+
+class Tokenizer:
+    pad_token = '[PAD]'
+    unk_token = '[UNK]'
+    cls_token = '[CLS]'
+
+    def get_cls_token_id(self):
+        return self.vocab_dict.get(self.cls_token)
+
+    def load(self, save_path : str):
+        if not os.path.exists(save_path):
+            raise FileNotFoundError(f"Vocab file not found: {save_path}")
+        
+        with open(save_path, 'r', encoding='utf8') as f:
+            self.vocab_list = [word.strip() for word in f.readlines()]
+            self.vocab_dict = { word : i for i, word in enumerate(self.vocab_list) }
+            self.vocab_size = len(self.vocab_list)
+            print(f"Vocab Size: {self.vocab_size}")
+    
+    @classmethod
+    def build_vocab(cls, data_path : str, save_path : str, vocab_size : int):
+        counter = Counter()
+        tk = Tokenizer()
+        special_tokens = [tk.pad_token, tk.unk_token, tk.cls_token]
+
+        with open(data_path, 'r', encoding='utf8') as f:
+            for line in f:
+                text, _ = line.strip().split('\t')
+                counter.update(text.strip())
+
+        vocab = counter.most_common(vocab_size)
+        vocab = [x[0] for x in vocab]
+        vocab = special_tokens + vocab
+        print(f"Vocab Size: {len(vocab)}")
+
+        folder = os.path.dirname(save_path)
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+
+        with open(save_path, 'w', encoding='utf8') as f:
+            for token in vocab:
+                f.write(f'{token}\n')
+
+    def tokenize(self, text : str):
+        return [token for token in text.strip()]
+    
+    def convert_tokens_to_ids(self, tokens : list):
+        unk_token_id = self.vocab_dict.get(self.unk_token)
+        return [ self.vocab_dict.get(token, unk_token_id) for token in tokens ]
+
 
 class TrainConfig(DistillConfigBase):
     random_seed : int = 1
@@ -10,7 +61,9 @@ class TrainConfig(DistillConfigBase):
     teacher_model_name : str = 'macbert'   # teacher model name for distillation
     teacher_model_acc : str = '95.22'  # to load the teacher model file with the corresponding accuracy suffix
     distilled_data_path : str = 'data_distilled/distilled_macbert.txt'
-    start_saving_epoch : int = 3
+    model_tokenizer_path : str = 'models_distilled/albert_dist/vocab.txt'
+    max_vocab_size : int = 30000
+    start_saving_epoch : int = 7
     num_epoches : int = 8
     batch_size : int = 64
     eval_batch_size : int = 512
@@ -25,8 +78,13 @@ class TrainConfig(DistillConfigBase):
     def __init__(self):
         self.classes=[x.strip() for x in open(self.data_path_class).readlines()]
         self.num_classes=len(self.classes)
-        self.model_tokenizer=BertTokenizerFast.from_pretrained(self.pretrained_path)
         self.model_config=AlbertConfig.from_pretrained(self.pretrained_path)
+
+        if not os.path.exists(self.model_tokenizer_path):
+            Tokenizer.build_vocab(self.data_path_train, self.model_tokenizer_path, self.max_vocab_size)
+
+        self.model_tokenizer = Tokenizer()
+        self.model_tokenizer.load(self.model_tokenizer_path)
 
     def create_optimizer(self, model: torch.nn.Module):
         param_optimizer=list(model.named_parameters())
@@ -87,10 +145,10 @@ class Model(ModelBase):
         return x
     
     def collate_fn(self, batch : list):
-        prefix = [self.train_config.model_tokenizer.cls_token_id]
+        prefix = [self.train_config.model_tokenizer.get_cls_token_id()]
 
         tokens = torch.nn.utils.rnn.pad_sequence(
-            [torch.tensor(data['x']) for data in batch], 
+            [torch.tensor(prefix + data['x']) for data in batch], 
             batch_first=True, padding_value=0).to(self.train_config.device)
         
         x = { 'input_ids': tokens, 'attention_mask': (tokens != 0).float() } # bert forward 参数

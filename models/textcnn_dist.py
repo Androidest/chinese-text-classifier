@@ -6,33 +6,32 @@ import os
 class Tokenizer:
     pad_token = '[PAD]'
     unk_token = '[UNK]'
-    sos_token = '[SOS]'
-    eos_token = '[EOS]'
 
     def load(self, save_path : str):
         if not os.path.exists(save_path):
-            raise FileNotFoundError(f"Vocab file not found: {save_path}"
-                                    )
+            raise FileNotFoundError(f"Vocab file not found: {save_path}")
+        
         with open(save_path, 'r', encoding='utf8') as f:
             self.vocab_list = [word.strip() for word in f.readlines()]
             self.vocab_dict = { word : i for i, word in enumerate(self.vocab_list) }
             self.vocab_size = len(self.vocab_list)
+            print(f"Vocab Size: {self.vocab_size}")
     
     @classmethod
     def build_vocab(cls, data_path : str, save_path : str, vocab_size : int):
         counter = Counter()
         tk = Tokenizer()
-        special_tokens = [tk.pad_token, tk.unk_token, tk.sos_token, tk.eos_token]
+        special_tokens = [tk.pad_token, tk.unk_token]
 
         with open(data_path, 'r', encoding='utf8') as f:
             for line in f:
                 text, _ = line.strip().split('\t')
                 counter.update(text.strip())
 
-        print(f"Max Vocab Size: {len(counter)}, Real Vocab Size: {vocab_size}")
         vocab = counter.most_common(vocab_size)
         vocab = [x[0] for x in vocab]
         vocab = special_tokens + vocab
+        print(f"Vocab Size: {len(vocab)}")
 
         folder = os.path.dirname(save_path)
         if not os.path.exists(folder):
