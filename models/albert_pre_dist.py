@@ -3,11 +3,13 @@ import torch
 from transformers import AlbertModel, AlbertConfig, BertTokenizerFast
 import copy
 
-class TrainConfig(TrainConfigBase):
+class TrainConfig(DistillConfigBase):
     random_seed : int = 1
-    # pretrained_path : str = 'ckiplab/albert-base-chinese' # pretrained model path or Huggingface model name
+    model_name : str = 'albert_pre_dist'
     pretrained_path : str = 'models_pretrained/albert-base-chinese' # pretrained model path or Huggingface model name
-    model_name : str = 'albert'
+    teacher_model_name : str = 'macbert'   # teacher model name for distillation
+    teacher_model_acc : str = '95.22'  # to load the teacher model file with the corresponding accuracy suffix
+    distilled_data_path : str = 'data_distilled/distilled_macbert.txt'
     start_saving_epoch : int = 5
     num_epoches : int = 6
     batch_size : int = 64
@@ -42,6 +44,20 @@ class TrainConfig(TrainConfigBase):
         self.optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=self.max_lr)
         return self.optimizer
     
+    def distill_loss_fn(self, logits, labels, teacher_logits):
+        T = 2
+        alpha = 0.5
+
+        student_pred = torch.log_softmax(logits / T, dim=-1)
+        teacher_pred = torch.softmax(teacher_logits/ T, dim=-1)
+        soft_loss = torch.nn.KLDivLoss(reduction='batchmean')(student_pred, teacher_pred) * (T * T)
+
+        hard_loss = torch.nn.CrossEntropyLoss()(logits, labels)
+
+        return alpha * soft_loss + (1 - alpha) * hard_loss
+    
+        # return torch.nn.MSELoss()(logits, teacher_logits)
+    
 class Model(ModelBase):
     def __init__(self, train_config: TrainConfig):
         super().__init__()
@@ -66,15 +82,19 @@ class Model(ModelBase):
 
     def collate_fn(self, batch : list):
         prefix = [self.train_config.model_tokenizer.cls_token_id]
-        suffix = [self.train_config.model_tokenizer.sep_token_id]
 
         tokens = torch.nn.utils.rnn.pad_sequence(
-            [torch.tensor(prefix + data['x'] + suffix) for data in batch], 
+            [torch.tensor(prefix + data['x']) for data in batch], 
             batch_first=True, 
             padding_value=0).to(self.train_config.device)
         
         x = { 'input_ids': tokens, 'attention_mask': (tokens != 0).float() } # bert forward 参数
         y = torch.tensor([data['y'] for data in batch], device=self.train_config.device)
+
+        if batch[0].get('logits') is not None:
+            logits = torch.tensor([data['logits'] for data in batch], device=self.train_config.device)
+            return x, y, logits
+        
         return x, y
     
 class TrainScheduler(TrainSchedulerBase):

@@ -53,15 +53,14 @@ class Tokenizer:
         unk_token_id = self.vocab_dict.get(self.unk_token)
         return [ self.vocab_dict.get(token, unk_token_id) for token in tokens ]
 
-
 class TrainConfig(DistillConfigBase):
     random_seed : int = 1
     pretrained_path : str = 'models_pretrained/albert-base-chinese' # pretrained model path or Huggingface model name
-    model_name : str = 'albert_dist'
+    model_name : str = 'albert_mini_dist'
     teacher_model_name : str = 'macbert'   # teacher model name for distillation
     teacher_model_acc : str = '95.22'  # to load the teacher model file with the corresponding accuracy suffix
     distilled_data_path : str = 'data_distilled/distilled_macbert.txt'
-    model_tokenizer_path : str = 'models_distilled/albert_dist/vocab.txt'
+    model_tokenizer_path : str = 'models_distilled/albert_mini_dist/vocab.txt'
     max_vocab_size : int = 30000
     start_saving_epoch : int = 7
     num_epoches : int = 8
